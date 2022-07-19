@@ -1,0 +1,14 @@
+
+so.ts
+tt.js
+tt.sh
+tt.py
+
+__handlers__
+\patchso.ts
+*.swp
+bins
+obj
+libs
+_agent.js
+node_modules
