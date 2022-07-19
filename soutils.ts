@@ -28,7 +28,7 @@ type SoInfoType = {
     dtor_functions      : number[],
 };
 
-type LoadSoInfoType = {
+export type LoadSoInfoType = {
     buff: NativePointer,
     syms: {[key:string]:NativePointer} ,
 };

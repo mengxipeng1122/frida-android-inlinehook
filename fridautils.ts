@@ -46,7 +46,7 @@ export let showAsmCode = (p:NativePointer, sz?: number| undefined, parser?:Funct
             offset+= inst.size;
         }
         catch(e){
-            console.log(`can parse instruction at ${p.add(offset)}`)
+            console.log(`can not parse instruction at ${p.add(offset)} ${p.add(offset).readByteArray(Process.pointerSize)}`)
             offset += Process.pointerSize;
         }
     }

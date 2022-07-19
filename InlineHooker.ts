@@ -1,7 +1,9 @@
 
 'use strict';
 
-import { showAsmCode, dumpMemory, getPyCodeFromMemory } from "./fridautils";
+import {loadSo, LoadSoInfoType } from './soutils'
+import { showAsmCode, dumpMemory, getPyCodeFromMemory,_frida_err, _frida_hexdump, _frida_log } from "./fridautils";
+import {info as shadowhooksoinfo} from './shadowhookso'
 
 export abstract class InlineHooker
 {
@@ -59,10 +61,12 @@ export abstract class InlineHooker
             [sz, origin_bytes] = this.relocCode(this.hook_ptr, code.add(offset), relocsz); offset += sz;
             // write jump back code 
             let origin_inst_len = origin_bytes.byteLength;
+            console.log('origin_bytes', origin_bytes, origin_inst_len)
             sz = this.putJumpCode(code.add(offset), this.hook_ptr.add(origin_inst_len)); offset += sz;
 
             // show code 
             dumpMemory(code, offset)
+            showAsmCode(code, offset)
             getPyCodeFromMemory(code, offset)
         });  
         // write jump code at hook_ptr
@@ -80,6 +84,29 @@ export abstract class InlineHooker
         console.log('origin_bytes', origin_bytes)
         return [offset, origin_bytes];
     }
+
+    static loadm : LoadSoInfoType;  
+    static loadShaderHookSo = ()=>{
+        let loadm = loadSo(shadowhooksoinfo,
+            {
+                _frida_log:     _frida_log,
+                _frida_err:     _frida_err,
+                _frida_hexdump: _frida_hexdump,
+            },
+            [
+                '__google_potentially_blocking_region_begin',
+                '__google_potentially_blocking_region_end',
+            ],
+            [
+            ],)
+        // console.log(JSON.stringify(loadm))
+        InlineHooker.loadm = loadm;
+    }
+
+    static init = ()=>{
+        InlineHooker.loadShaderHookSo();
+    }
+
 
     static all_inline_hooks:{[key:string]:{
             origin_bytes:ArrayBuffer| null,
@@ -255,23 +282,29 @@ class Arm64InlineHooker extends InlineHooker{
 
     relocCode(from:NativePointer, to:NativePointer, sz:number):[number, ArrayBuffer] {
         console.log('relocCode sz', sz, from, '=>', to);
-        let offset = 0;
-        let code = to.and(~1);
-        const writer = new Arm64Writer(code);
-        const relocator = new Arm64Relocator(from, writer)
-        for(let c=0;c<InlineHooker.max_code_cnt; c++){
-            dumpMemory(to.add(offset), 0x10)
-            dumpMemory(from.add(offset), 0x10)
-            offset = relocator.readOne(); 
-            let inst = relocator.input;
-            console.log(offset, 'inst', JSON.stringify(inst))
-            relocator.writeOne();
-            if(offset>=sz) break;
-        }
-        writer.flush();
-        let origin_bytes = from.readByteArray(offset);
+        let funp = InlineHooker.loadm?.syms?.sh_a64_inst_hook_rewrite;
+        if(funp==undefined) throw `can not found sh_a64_inst_hook_rewrite`;
+        let fun = new NativeFunction(funp, 'int', ['pointer','pointer','uint']);
+        let offset = fun(from, to, sz)
+        if(offset <0 ) throw `ret ${offset} when call sh_a64_inst_hook_rewrite`
+        // let offset = 0;
+        // let code = to;
+        // const writer = new Arm64Writer(code);
+        // const relocator = new Arm64Relocator(from, writer)
+        // for(let c=0;c<InlineHooker.max_code_cnt; c++){
+        //     dumpMemory(to.add(offset), 0x10)
+        //     dumpMemory(from.add(offset), 0x10)
+        //     offset = relocator.readOne(); 
+        //     let inst = relocator.input;
+        //     console.log(offset, 'inst', JSON.stringify(inst))
+        //     relocator.writeOne();
+        //     if(offset>=sz) break;
+        // }
+        // writer.flush();
+        let origin_bytes = from.readByteArray(sz);
         if(origin_bytes==null) throw `can not read origin byte at ${from}`
-        return [writer.offset, origin_bytes]
+        showAsmCode(to,offset)
+        return [offset, origin_bytes]
     }
 
     canBranchDirectlyBetween(from:NativePointer, to:NativePointer):boolean {

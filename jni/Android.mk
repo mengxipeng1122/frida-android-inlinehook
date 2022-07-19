@@ -42,3 +42,24 @@ LOCAL_SHARED_LIBRARIES = MyGame fridafuns
 include $(BUILD_SHARED_LIBRARY)
 
 
+include $(CLEAR_VARS)
+LOCAL_MODULE:= shadowhook
+ifeq ("${TARGET_ARCH_ABI_MACRO}","ARM64_V8A")
+    LOCAL_SRC_FILES := shadowhook/src/main/cpp/arch/arm64/sh_a64.c 
+endif
+
+
+
+LOCAL_C_INCLUDES :=     shadowhook/src/main/cpp/common              \
+                        shadowhook/src/main/cpp/third_party/xdl     \
+                        shadowhook/src/main/cpp/arch/arm64          \
+                        shadowhook/src/main/cpp/                    \
+                        shadowhook/src/main/cpp/include  
+
+LOCAL_LDLIBS :=  
+LOCAL_CXXFLAGS= 
+LOCAL_CFLAGS= -std=c11
+LOCAL_SHARED_LIBRARIES =  fridafuns
+include $(BUILD_SHARED_LIBRARY)
+
+

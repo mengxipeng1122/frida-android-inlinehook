@@ -1,3 +1,5 @@
+'use strict';
+
 import {loadSo} from './soutils'
 import {basename} from 'path'
 import {InlineHooker} from './InlineHooker'
@@ -36,6 +38,8 @@ let test = function()
     let trampoline_ptr = m.base.add(soinfo.loads[0].virtual_size);
     let trampoline_ptr_end = m.base.add(soinfo.loads[1].virtual_address);
 
+    InlineHooker.init();
+
     let infos;
     let frida_fun = new NativeCallback(function(sp:NativePointer){
         console.log(sp.readUtf8String(),'from frida_fun')
@@ -61,7 +65,7 @@ const fun = new NativeFunction(cm.fun, 'void', []);
         infos = [
             //{hook_ptr :m.base.add(0x2f371c), hook_fun_ptr:loadm?.syms.hook_test1 },
             //{hook_ptr :m.base.add(0x2f372c), hook_fun_ptr:loadm?.syms.hook_test1 },
-            {hook_ptr :m.base.add(0x2dc864), hook_fun_ptr:loadm?.syms.hook_test1  },
+            {hook_ptr :m.base.add(0x2dc868), hook_fun_ptr:loadm?.syms.hook_test1  },
         ]
     }
     else if(arch=='arm'){

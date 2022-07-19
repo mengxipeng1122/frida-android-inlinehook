@@ -15,7 +15,10 @@ generate_patchso_ts: build_jni
 generate_so_ts:
 	./utils/so2tsmodule.py --no-content --no-exports --no-relocations bins/${PACKAGE_NAME}/lib/${ANDROID_ABI}/${SO_NAME} -o so.ts
 
-build_ts: build_jni generate_patchso_ts
+generate_shadowhook_ts:
+	./utils/so2tsmodule.py --no-content libs/${ANDROID_ABI}/libshadowhook.so -o shadowhookso.ts
+
+build_ts: build_jni generate_patchso_ts generate_shadowhook_ts
 	npm run build
 
 run: build_ts

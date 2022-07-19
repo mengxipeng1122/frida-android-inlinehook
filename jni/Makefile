@@ -12,4 +12,5 @@ clean:
 
 install:build
 	adb push ../libs/${ANDROID_ABI}/libpatch.so /data/local/tmp
+	adb push ../libs/${ANDROID_ABI}/libshadowhook.so /data/local/tmp
 

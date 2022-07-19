@@ -6,6 +6,7 @@ tt.py
 
 __handlers__
 \patchso.ts
+\shadowhookso.ts
 *.swp
 bins
 obj
