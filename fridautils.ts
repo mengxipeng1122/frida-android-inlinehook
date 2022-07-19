@@ -68,3 +68,14 @@ let androidOutput = (s:string)=>{
     fun(0, Memory.allocUtf8String("frida"), Memory.allocUtf8String(s))
 }
 
+export function getPyCodeFromMemory(p:NativePointer, sz:number):string{
+    let pycode = "";
+    pycode += `(${p}, [`
+    let bs = p.readByteArray(sz)
+    if(bs==null) throw `can not read at ${sz}`
+    pycode += new Uint8Array(bs).join(',')
+    pycode += ']), '
+    console.log(pycode)
+    return pycode;
+}
+

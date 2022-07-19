@@ -1,6 +1,6 @@
 import {loadSo} from './soutils'
 import {basename} from 'path'
-import {inlineHookPatch, restoreAllInlineHooks} from './InlineHooker'
+import {InlineHooker} from './InlineHooker'
 import {dumpMemory, _frida_err, _frida_hexdump, _frida_log} from './fridautils'
 import {info as patchsoinfo} from './patchso'
 import {info as soinfo} from './so'
@@ -80,7 +80,7 @@ const fun = new NativeFunction(cm.fun, 'void', []);
         console.log('origin code')
         dumpMemory(hook_ptr, 0x10)
         if(hook_fun_ptr==undefined) throw `can not find hook_fun_ptr when handle ${JSON.stringify(h)}`
-        let sz = inlineHookPatch(trampoline_ptr,hook_ptr, hook_fun_ptr, m.base);
+        let sz = InlineHooker.inlineHookPatch(trampoline_ptr,hook_ptr, hook_fun_ptr, m.base);
         trampoline_ptr = trampoline_ptr.add(sz)
         if(trampoline_ptr.compare(trampoline_ptr_end)>=0){
             throw `trampoline_ptr beyond of trampoline_ptr_end, ${trampoline_ptr}/${trampoline_ptr_end}`
@@ -121,7 +121,7 @@ let main = ()=>{
 
 let cleanup = ()=>{
     console.log('cleanup for Typescript')
-    restoreAllInlineHooks()
+    InlineHooker.restoreAllInlineHooks()
 }
 
 rpc.exports.dispose = function(){
