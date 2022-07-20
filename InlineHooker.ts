@@ -5,7 +5,6 @@ import {loadSo, LoadSoInfoType } from './soutils'
 import { showAsmCode, dumpMemory, getPyCodeFromMemory,_frida_err, _frida_hexdump, _frida_log, readMemoryArrayBuffer } from "./fridautils";
 import {info as shadowhooksoinfo} from './shadowhookso'
 import {sh_a64_rewrite} from './sh_a64'
-import { write } from 'fs';
 
 const using_frida_for_reloc_code:boolean = true;
 
@@ -71,13 +70,7 @@ export abstract class InlineHooker
             offset += sz;
             // write jump back code 
             let origin_inst_len = origin_bytes.byteLength;
-            console.log('origin_bytes', origin_bytes, origin_inst_len)
             sz = this.putJumpCode(code.add(offset), this.hook_ptr.add(origin_inst_len)); offset += sz;
-
-            // show code 
-            dumpMemory(code, offset)
-            showAsmCode(code, offset)
-            getPyCodeFromMemory(code, offset)
         });  
         // write jump code at hook_ptr
         let jumpsz = this.getJumpInstLen(this.hook_ptr, trampolineCodeAddr);
@@ -86,13 +79,7 @@ export abstract class InlineHooker
         origin_bytes = bs;
         Memory.patchCode(this.hook_ptr, jumpsz, code=>{
             let sz = this.putJumpCode(code, trampolineCodeAddr)
-            dumpMemory(code, sz);
-            showAsmCode(code, sz);
-            getPyCodeFromMemory(code, sz)
         })
-        console.log('trampolineCodeAddr', trampolineCodeAddr)
-        console.log('hook_fun_ptr', this.hook_fun_ptr);
-        console.log('origin_bytes', origin_bytes)
         return [offset, origin_bytes];
     }
 
@@ -117,7 +104,6 @@ export abstract class InlineHooker
             ],
             libs,
             )
-        // console.log(JSON.stringify(loadm))
         InlineHooker.loadm = loadm;
     }
 
@@ -137,11 +123,9 @@ export abstract class InlineHooker
 
     static restoreAllInlineHooks=()=>{
         let hooks = InlineHooker.all_inline_hooks;
-        console.log('all_inline_hooks', Object.keys(hooks).length)
         Object.keys(hooks)
             .forEach(k=>{
                 let v = hooks[k]
-                console.log('k',k, JSON.stringify(v))
                 if (v.origin_bytes!=null){
                     let bs = v.origin_bytes;
                     let p = v.hook_ptr;
@@ -215,13 +199,10 @@ class ThumbInlineHooker extends InlineHooker{
         writer.putPopRegs([ 'r0', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7' ])
         writer.flush();
         let sz = writer.offset;
-        dumpMemory(p, sz);
-        showAsmCode(p.or(1),sz);
         return sz;
     }
 
     relocCode(from:NativePointer, to:NativePointer, sz:number):[number, ArrayBuffer] {
-        console.log('relocCode sz', sz, from, '=>', to);
         let funp = InlineHooker.loadm?.syms?.sh_inst_hook_thumb_rewrite;
         if(funp==undefined) throw `can not found sh_inst_hook_thumb_rewrite`;
         let fun = new NativeFunction(funp, 'int', ['pointer','pointer','uint','pointer']);
@@ -230,16 +211,11 @@ class ThumbInlineHooker extends InlineHooker{
         if(offset <=0 ) throw `ret ${offset} when call sh_inst_hook_thumb_rewrite`
         let origin_bytes = readMemoryArrayBuffer(from,sz);
         let write_sz = offset;
-        dumpMemory(to, write_sz)
-        showAsmCode(to.or(1),write_sz);
         return [offset, origin_bytes]
     }
 
     canBranchDirectlyBetween(from:NativePointer, to:NativePointer):boolean {
         let distance = to.or(1).sub(from.or(1)).toInt32();
-        console.log('from', from)
-        console.log('to', to)
-        console.log('distance', distance);
         return distance >=-8388608 && distance<= 8388607;
     }
 
@@ -257,7 +233,6 @@ class ThumbInlineHooker extends InlineHooker{
             return writer.offset;
         }
         else{
-            console.log(from,'=>', to.or(1))
             if(code.and(0x3).equals(0)) {
                 writer.putLdrRegRegOffset('pc','pc',0)
             }
@@ -295,7 +270,6 @@ class Arm64InlineHooker extends InlineHooker{
     }
 
     relocCode(from:NativePointer, to:NativePointer, sz:number):[number, ArrayBuffer] {
-        console.log('relocCode sz', sz, from, '=>', to);
         let funp = InlineHooker.loadm?.syms?.sh_inst_hook_a64_rewrite;
         if(funp==undefined) throw `can not found sh_inst_hook_a64_rewrite`;
         let fun = new NativeFunction(funp, 'int', ['pointer','pointer','uint']);
@@ -303,12 +277,10 @@ class Arm64InlineHooker extends InlineHooker{
         if(offset <0 ) throw `ret ${offset} when call sh_a64_inst_hook_rewrite`
         let origin_bytes = from.readByteArray(sz);
         if(origin_bytes==null) throw `can not read origin byte at ${from}`
-        showAsmCode(to,offset)
         return [offset, origin_bytes]
     }
 
     relocCodeByFrida(from:NativePointer, to:NativePointer, sz:number):[number, ArrayBuffer] {
-        console.log('relocCode sz', sz, from, '=>', to);
         let ioff=0;
         let offset = 0;
         for( let t=0;t<InlineHooker.max_code_cnt; t++) {
@@ -320,8 +292,6 @@ class Arm64InlineHooker extends InlineHooker{
             ioff+=4;
         }
         let origin_bytes = readMemoryArrayBuffer(from, sz)
-        dumpMemory(to, offset)
-        showAsmCode(to,offset)
         return [offset, origin_bytes]
     }
 
@@ -344,13 +314,11 @@ class Arm64InlineHooker extends InlineHooker{
             return writer.offset;
         }
         else{
-            console.log(from,'=>', to)
             writer.putBytes([ 0x50, 0x00, 0x00, 0x58]);  // ldr	x16, #8
             writer.putBrReg('x16');
             writer.flush()
             from.add(writer.offset).writePointer(to)
             let sz = writer.offset+Process.pointerSize;
-            dumpMemory(from,sz)
             return writer.offset+Process.pointerSize;
         }
     }

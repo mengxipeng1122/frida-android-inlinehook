@@ -232,7 +232,7 @@ let sh_a64_rewrite_tb = (buf:NativePointer, inst:number, pc:NativePointer):numbe
 
 export let  sh_a64_rewrite=(buf:NativePointer, inst:number, pc:NativePointer ):number=> {
   let typ = sh_a64_get_type(inst);
-  console.log(`a64 rewrite: typ ${typ}, inst ${inst} `);
+  //console.log(`a64 rewrite: typ ${typ}, inst ${ptr(inst)} `);
 
   switch(typ) {
     case sh_a64_type_t.B :

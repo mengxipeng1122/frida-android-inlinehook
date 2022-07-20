@@ -10,9 +10,9 @@ import {dumpMemory, showAsmCode, _frida_err, _frida_hexdump, _frida_log} from '.
 let soname = 'libMyGame.so'
 
 // never define callee function as a local variable, or it will be free by GC system 
-const frida_fun = new NativeCallback(function(sp:NativePointer){
-    console.log('sp', sp)
-},'void',['pointer'])
+const frida_fun = new NativeCallback(function(para1:NativePointer, sp:NativePointer){
+    console.log('para1', para1, 'sp', sp);
+},'void',['pointer','pointer'])
 
 let trampoline_len = Process.pageSize
 const trampoline_ptr = Memory.alloc(trampoline_len)
