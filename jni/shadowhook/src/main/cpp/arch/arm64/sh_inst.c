@@ -37,6 +37,8 @@
 #include "shadowhook.h"
 #include "xdl.h"
 
+#if 0
+
 static int sh_inst_hook_rewrite(sh_inst_t *self, uintptr_t target_addr, uintptr_t *orig_addr,
                                 uintptr_t *orig_addr2) {
   // backup original instructions (length: 4 or 16)
@@ -201,3 +203,31 @@ int sh_inst_unhook(sh_inst_t *self, uintptr_t target_addr) {
   SH_LOG_INFO("a64: unhook OK. target %" PRIxPTR, target_addr);
   return 0;
 }
+#else
+
+// add by mxp
+int sh_inst_hook_a64_rewrite(uintptr_t from,  uintptr_t to ,uint32_t len)
+{
+  // package the information passed to rewrite
+  sh_a64_rewrite_info_t rinfo;
+  rinfo.start_addr = to;
+  rinfo.end_addr = to + len;
+  rinfo.buf = (uint32_t *)from;
+  rinfo.buf_offset = 0;
+  rinfo.inst_lens_cnt =len / 4;
+  for (uintptr_t i = 0; i < len; i += 4)
+    rinfo.inst_lens[i / 4] = sh_a64_get_rewrite_inst_len(*((uint32_t *)(to + i)));
+
+  // rewrite original instructions (fill in enter)
+  uintptr_t pc = from;
+  for (uintptr_t i = 0; i < len; i += 4, pc += 4) {
+    size_t offset = sh_a64_rewrite((uint32_t *)(to + rinfo.buf_offset),
+                                   *((uint32_t *)(from + i)), pc, &rinfo);
+    if (0 == offset) return -1;
+    rinfo.buf_offset += offset;
+  }
+
+  return rinfo.buf_offset;
+}
+
+#endif

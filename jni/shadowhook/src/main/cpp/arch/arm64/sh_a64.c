@@ -291,28 +291,3 @@ size_t sh_a64_relative_jump(uint32_t *buf, uintptr_t addr, uintptr_t pc) {
   buf[0] = 0x14000000u | (((addr - pc) & 0x0FFFFFFFu) >> 2u);  // B <label>
   return 4;
 }
-
-// add by mxp
-int sh_inst_hook_a64_rewrite(uintptr_t from,  uintptr_t to ,uint32_t len)
-{
-  // package the information passed to rewrite
-  sh_a64_rewrite_info_t rinfo;
-  rinfo.start_addr = to;
-  rinfo.end_addr = to + len;
-  rinfo.buf = (uint32_t *)from;
-  rinfo.buf_offset = 0;
-  rinfo.inst_lens_cnt =len / 4;
-  for (uintptr_t i = 0; i < len; i += 4)
-    rinfo.inst_lens[i / 4] = sh_a64_get_rewrite_inst_len(*((uint32_t *)(to + i)));
-
-  // rewrite original instructions (fill in enter)
-  uintptr_t pc = from;
-  for (uintptr_t i = 0; i < len; i += 4, pc += 4) {
-    size_t offset = sh_a64_rewrite((uint32_t *)(to + rinfo.buf_offset),
-                                   *((uint32_t *)(from + i)), pc, &rinfo);
-    if (0 == offset) return -1;
-    rinfo.buf_offset += offset;
-  }
-
-  return rinfo.buf_offset;
-}

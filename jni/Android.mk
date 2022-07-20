@@ -45,7 +45,8 @@ include $(BUILD_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE:= shadowhook
 ifeq ("${TARGET_ARCH_ABI_MACRO}","ARM64_V8A")
-    LOCAL_SRC_FILES := shadowhook/src/main/cpp/arch/arm64/sh_a64.c 
+    LOCAL_SRC_FILES := shadowhook/src/main/cpp/arch/arm64/sh_a64.c  \
+                       shadowhook/src/main/cpp/arch/arm64/sh_inst.c 
 else ifeq ("${TARGET_ARCH_ABI_MACRO}","ARMEABI_V7A")
     LOCAL_SRC_FILES := shadowhook/src/main/cpp/arch/arm/sh_t32.c \
                        shadowhook/src/main/cpp/common/sh_util.c  \
