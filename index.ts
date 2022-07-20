@@ -9,9 +9,48 @@ import {dumpMemory, showAsmCode, _frida_err, _frida_hexdump, _frida_log} from '.
 // global variables 
 let soname = 'libMyGame.so'
 
+let showARM64Regs = (sp:NativePointer)=>{
+    if(Process.arch!='arm64') throw `Please check architecure, current is ${Process.arch}`
+    // show static 
+    console.log("dump arm64 registers value");
+    console.log("x0  ", sp.add(0xf0).readPointer());
+    console.log("x1  ", sp.add(0xf8).readPointer());
+    console.log("x2  ", sp.add(0xe0).readPointer());
+    console.log("x3  ", sp.add(0xe8).readPointer());
+    console.log("x4  ", sp.add(0xd0).readPointer());
+    console.log("x5  ", sp.add(0xd8).readPointer());
+    console.log("x6  ", sp.add(0xc0).readPointer());
+    console.log("x7  ", sp.add(0xc8).readPointer());
+    console.log("x8  ", sp.add(0xb0).readPointer());
+    console.log("x9  ", sp.add(0xb8).readPointer());
+    console.log("x10 ", sp.add(0xa0).readPointer());
+    console.log("x11 ", sp.add(0xa8).readPointer());
+    console.log("x12 ", sp.add(0x90).readPointer());
+    console.log("x13 ", sp.add(0x98).readPointer());
+    console.log("x14 ", sp.add(0x80).readPointer());
+    console.log("x15 ", sp.add(0x88).readPointer());
+    console.log("x16 ", sp.add(0x70).readPointer());
+    console.log("x17 ", sp.add(0x78).readPointer());
+    console.log("x18 ", sp.add(0x60).readPointer());
+    console.log("x19 ", sp.add(0x68).readPointer());
+    console.log("x20 ", sp.add(0x50).readPointer());
+    console.log("x21 ", sp.add(0x58).readPointer());
+    console.log("x22 ", sp.add(0x40).readPointer());
+    console.log("x23 ", sp.add(0x48).readPointer());
+    console.log("x24 ", sp.add(0x30).readPointer());
+    console.log("x25 ", sp.add(0x38).readPointer());
+    console.log("x26 ", sp.add(0x20).readPointer());
+    console.log("x27 ", sp.add(0x28).readPointer());
+    console.log("x28 ", sp.add(0x10).readPointer());
+    console.log("x29 ", sp.add(0x18).readPointer());
+    console.log("x30 ", sp.add(0x00).readPointer());
+    console.log("nzcv", sp.add(0x08).readPointer());
+}
+
 // never define callee function as a local variable, or it will be free by GC system 
 const frida_fun = new NativeCallback(function(para1:NativePointer, sp:NativePointer){
     console.log('para1', para1, 'sp', sp);
+    showARM64Regs(sp);
 },'void',['pointer','pointer'])
 
 let trampoline_len = Process.pageSize
@@ -31,7 +70,7 @@ let test = function()
     let arch = Process.arch;
     if(arch == 'arm64'){
         infos = [
-            {hook_offset:0x2dc8bc, hook_fun_ptr:frida_fun  },
+            {hook_offset:0x2dc848, hook_fun_ptr:frida_fun  },
         ]
     }
     else if(arch=='arm'){
