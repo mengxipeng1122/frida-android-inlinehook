@@ -137,20 +137,15 @@ static uintptr_t sh_a64_fix_addr(uintptr_t addr, sh_a64_rewrite_info_t *rinfo) {
 static size_t sh_a64_rewrite_b(uint32_t *buf, uint32_t inst, uintptr_t pc, sh_a64_type_t type,
                                sh_a64_rewrite_info_t *rinfo) {
   uint64_t imm64;
-  SH_LOG_INFO("%p", (void*)pc);
   if (type == B_COND) {
     uint64_t imm19 = SH_UTIL_GET_BITS_32(inst, 23, 5);
     imm64 = SH_UTIL_SIGN_EXTEND_64(imm19 << 2u, 21u);
   } else {
     uint64_t imm26 = SH_UTIL_GET_BITS_32(inst, 25, 0);
-  SH_LOG_INFO("%p", (void*)imm26);
     imm64 = SH_UTIL_SIGN_EXTEND_64(imm26 << 2u, 28u);
-  SH_LOG_INFO("%p", (void*)imm64);
   }
   uint64_t addr = pc + imm64;
-  SH_LOG_INFO("%p", (void*)addr);
   addr = sh_a64_fix_addr(addr, rinfo);
-  SH_LOG_INFO("%p", (void*)addr);
 
   size_t idx = 0;
   if (type == B_COND) {

@@ -40,7 +40,7 @@ let test = function()
 
     InlineHooker.init();
 
-    let infos;
+    let infos:{hook_offset:number,hook_fun_ptr:NativePointer}[];
     let frida_fun = new NativeCallback(function(sp:NativePointer){
         console.log(sp.readUtf8String(),'from frida_fun')
     },'void',['pointer'])
@@ -65,12 +65,15 @@ const fun = new NativeFunction(cm.fun, 'void', []);
         infos = [
             //{hook_ptr :m.base.add(0x2f371c), hook_fun_ptr:loadm?.syms.hook_test1 },
             //{hook_ptr :m.base.add(0x2f372c), hook_fun_ptr:loadm?.syms.hook_test1 },
-            {hook_ptr :m.base.add(0x2dc868), hook_fun_ptr:loadm?.syms.hook_test1  },
+            {hook_offset:0x2dc868, hook_fun_ptr:loadm?.syms.hook_test1  },
+            {hook_offset:0x2dc880, hook_fun_ptr:loadm?.syms.hook_test1  },
+            {hook_offset:0x2dc838, hook_fun_ptr:loadm?.syms.hook_test1  },
+            {hook_offset:0x2dc88c, hook_fun_ptr:loadm?.syms.hook_test1  },
         ]
     }
     else if(arch=='arm'){
         infos = [
-            {hook_ptr :m.base.add(0x1f3701), hook_fun_ptr:loadm?.syms.hook_test1  },
+            //{hook_ptr :m.base.add(0x1f3701), hook_fun_ptr:loadm?.syms.hook_test1  },
         ]
     }
     else{
@@ -78,13 +81,13 @@ const fun = new NativeFunction(cm.fun, 'void', []);
     }
     infos.forEach(h=>{
         let m = Process.getModuleByName(soname)
-        let hook_ptr = h.hook_ptr;
+        let hook_ptr = m.base.add(h.hook_offset);
         let hook_fun_ptr = h.hook_fun_ptr;
         console.log(JSON.stringify(h))
         console.log('origin code')
         dumpMemory(hook_ptr, 0x10)
         if(hook_fun_ptr==undefined) throw `can not find hook_fun_ptr when handle ${JSON.stringify(h)}`
-        let sz = InlineHooker.inlineHookPatch(trampoline_ptr,hook_ptr, hook_fun_ptr, m.base);
+        let sz = InlineHooker.inlineHookPatch(trampoline_ptr,hook_ptr, hook_fun_ptr, ptr(h.hook_offset));
         trampoline_ptr = trampoline_ptr.add(sz)
         if(trampoline_ptr.compare(trampoline_ptr_end)>=0){
             throw `trampoline_ptr beyond of trampoline_ptr_end, ${trampoline_ptr}/${trampoline_ptr_end}`

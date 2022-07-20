@@ -62,13 +62,13 @@ export let dumpMemory = (p:NativePointer, l?:number|undefined)=>{
     }));
 };
 
-let androidOutput = (s:string)=>{
+export let androidOutput = (s:string)=>{
     let funp = Module.getExportByName(null,'__android_log_print')
     let fun = new NativeFunction(funp, 'int',['int','pointer','pointer'])
     fun(0, Memory.allocUtf8String("frida"), Memory.allocUtf8String(s))
 }
 
-export function getPyCodeFromMemory(p:NativePointer, sz:number):string{
+export let getPyCodeFromMemory=(p:NativePointer, sz:number):string=>{
     let pycode = "";
     pycode += `(${p}, [`
     let bs = p.readByteArray(sz)
@@ -77,5 +77,12 @@ export function getPyCodeFromMemory(p:NativePointer, sz:number):string{
     pycode += ']), '
     console.log(pycode)
     return pycode;
+}
+
+export let readMemoryArrayBuffer=(p:NativePointer, sz?:number):ArrayBuffer=>{
+    if(sz==undefined) sz = 0x10;
+    let ab = p.readByteArray(sz);
+    if(ab==null) throw(`read ${sz} bytes from ${p} failed`)
+    return ab;
 }
 
