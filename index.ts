@@ -31,53 +31,28 @@ let loadPatchSo = ()=>{
 }
 
 // never define callee function as a local variable, or it will be free by GC system 
-export     let infos:{hook_offset:number,hook_fun_ptr:NativePointer}[];
 export    let frida_fun = new NativeCallback(function(sp:NativePointer){
-        //console.log(sp.readUtf8String(),'from frida_fun')
-        dumpMemory(sp)
+        console.log('sp', sp)
     },'void',['pointer'])
 
-export    const cm = new CModule(`
-void _frida_fun(const char* s);
-void fun(void) {
-    _frida_fun("Hello World from CModule\\n");
-}
-    `,{
-        _frida_fun: frida_fun,
-    });
 
 let test = function()
 {
     let m = Process.findModuleByName(soname);
     if(m==null) return;
-    let loadm  = loadPatchSo();
+    //let loadm  = loadPatchSo();
+    let infos:{hook_offset:number,hook_fun_ptr:NativePointer}[];
 
     let trampoline_ptr = m.base.add(soinfo.loads[0].virtual_size);
     let trampoline_ptr_end = m.base.add(soinfo.loads[1].virtual_address);
 
     InlineHooker.init([soname]);
 
-    const fun = new NativeFunction(cm.fun, 'void', []);
-    console.log('fun', fun);
-    console.log('frida_fun', frida_fun);
-    fun();
-    Memory.protect(fun,Process.pageSize,'rwx')
-    {
-        let p = fun;;
-        console.log('cm', JSON.stringify(cm))
-        showAsmCode(p)
-        dumpMemory(p, 0x20)
-    }
-
     let arch = Process.arch;
     if(arch == 'arm64'){
         infos = [
-            //{hook_offset:0x2dc854, hook_fun_ptr:loadm?.syms.hook_test1  },
-            {hook_offset:0x2dc854, hook_fun_ptr:fun  },
-            // {hook_offset:0x2dc868, hook_fun_ptr:loadm?.syms.hook_test1  },
-            // {hook_offset:0x2dc880, hook_fun_ptr:loadm?.syms.hook_test1  },
-            // {hook_offset:0x2dc838, hook_fun_ptr:loadm?.syms.hook_test1  },
-            // {hook_offset:0x2dc88c, hook_fun_ptr:loadm?.syms.hook_test1  },
+            //{hook_offset:0x2dc868, hook_fun_ptr:frida_fun  },
+            {hook_offset:0x2dc8bc, hook_fun_ptr:frida_fun  },
         ]
     }
     else if(arch=='arm'){

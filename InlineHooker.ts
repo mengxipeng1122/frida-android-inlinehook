@@ -4,6 +4,10 @@
 import {loadSo, LoadSoInfoType } from './soutils'
 import { showAsmCode, dumpMemory, getPyCodeFromMemory,_frida_err, _frida_hexdump, _frida_log, readMemoryArrayBuffer } from "./fridautils";
 import {info as shadowhooksoinfo} from './shadowhookso'
+import {sh_a64_rewrite} from './sh_a64'
+import { write } from 'fs';
+
+const using_frida_for_reloc_code:boolean = true;
 
 export abstract class InlineHooker
 {
@@ -27,6 +31,10 @@ export abstract class InlineHooker
 
     relocCode(from:NativePointer, to:NativePointer, sz:number):[number, ArrayBuffer] {
         throw `please implement relocCode function ${JSON.stringify(this)}`
+    }
+
+    relocCodeByFrida(from:NativePointer, to:NativePointer, sz:number):[number, ArrayBuffer] {
+        throw `please implement relocCodeByFrida function ${JSON.stringify(this)}`
     }
 
     putJumpCode(from:NativePointer, to:NativePointer):number {
@@ -58,7 +66,9 @@ export abstract class InlineHooker
             sz = this.putPrecode(code.add(offset)); offset += sz;
             // relocate code 
             relocsz = this.getJumpInstLen(this.hook_ptr, trampolineCodeAddr);
-            [sz, origin_bytes] = this.relocCode(this.hook_ptr, code.add(offset), relocsz); offset += sz;
+            if(using_frida_for_reloc_code) [sz, origin_bytes] = this.relocCodeByFrida(this.hook_ptr, code.add(offset), relocsz);
+            else [sz, origin_bytes] = this.relocCode(this.hook_ptr, code.add(offset), relocsz);
+            offset += sz;
             // write jump back code 
             let origin_inst_len = origin_bytes.byteLength;
             console.log('origin_bytes', origin_bytes, origin_inst_len)
@@ -66,6 +76,7 @@ export abstract class InlineHooker
 
             // show code 
             dumpMemory(code, offset)
+            showAsmCode(code, offset)
             getPyCodeFromMemory(code, offset)
         });  
         // write jump code at hook_ptr
@@ -76,6 +87,7 @@ export abstract class InlineHooker
         Memory.patchCode(this.hook_ptr, jumpsz, code=>{
             let sz = this.putJumpCode(code, trampolineCodeAddr)
             dumpMemory(code, sz);
+            showAsmCode(code, sz);
             getPyCodeFromMemory(code, sz)
         })
         console.log('trampolineCodeAddr', trampolineCodeAddr)
@@ -294,6 +306,25 @@ class Arm64InlineHooker extends InlineHooker{
         showAsmCode(to,offset)
         return [offset, origin_bytes]
     }
+
+    relocCodeByFrida(from:NativePointer, to:NativePointer, sz:number):[number, ArrayBuffer] {
+        console.log('relocCode sz', sz, from, '=>', to);
+        let ioff=0;
+        let offset = 0;
+        for( let t=0;t<InlineHooker.max_code_cnt; t++) {
+            if(ioff>=sz) break;
+            let iaddr = from.add(ioff)
+            let oaddr = to.add(offset);
+            const inst = iaddr.readU32();
+            offset+= sh_a64_rewrite(oaddr,inst,iaddr);
+            ioff+=4;
+        }
+        let origin_bytes = readMemoryArrayBuffer(from, sz)
+        dumpMemory(to, offset)
+        showAsmCode(to,offset)
+        return [offset, origin_bytes]
+    }
+
 
     canBranchDirectlyBetween(from:NativePointer, to:NativePointer):boolean {
         return new Arm64Writer(ptr(0)).canBranchDirectlyBetween(from, to);
