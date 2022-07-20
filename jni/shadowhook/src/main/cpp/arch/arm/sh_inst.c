@@ -42,6 +42,7 @@
 #include "sh_util.h"
 #include "shadowhook.h"
 
+#if 0
 static void sh_inst_get_thumb_rewrite_info(sh_inst_t *self, uintptr_t target_addr,
                                            sh_txx_rewrite_info_t *rinfo) {
   memset(rinfo, 0, sizeof(sh_txx_rewrite_info_t));
@@ -521,3 +522,162 @@ int sh_inst_unhook(sh_inst_t *self, uintptr_t target_addr) {
   SH_LOG_INFO("%s: unhook OK. target %" PRIxPTR, is_thumb ? "thumb" : "a32", target_addr);
   return 0;
 }
+#else
+// by mxp
+static void sh_inst_get_thumb_rewrite_info(uintptr_t target_addr, uint32_t sz,
+                                           sh_txx_rewrite_info_t *rinfo) {
+  memset(rinfo, 0, sizeof(sh_txx_rewrite_info_t));
+
+  size_t idx = 0;
+  uintptr_t target_addr_offset = 0;
+  uintptr_t pc = target_addr + 4;
+  size_t rewrite_len = 0;
+
+  while (rewrite_len < sz) {
+    // IT block
+    sh_t16_it_t it;
+    if (sh_t16_parse_it(&it, *((uint16_t *)(target_addr + target_addr_offset)), pc)) {
+      rewrite_len += (2 + it.insts_len);
+
+      size_t it_block_idx = idx++;
+      size_t it_block_len = 4 + 4;  // IT-else + IT-then
+      for (size_t i = 0, j = 0; i < it.insts_cnt; i++) {
+        bool is_thumb32 = sh_util_is_thumb32((uintptr_t)(&(it.insts[j])));
+        if (is_thumb32) {
+          it_block_len += sh_t32_get_rewrite_inst_len(it.insts[j], it.insts[j + 1]);
+          rinfo->inst_lens[idx++] = 0;
+          rinfo->inst_lens[idx++] = 0;
+          j += 2;
+        } else {
+          it_block_len += sh_t16_get_rewrite_inst_len(it.insts[j]);
+          rinfo->inst_lens[idx++] = 0;
+          j += 1;
+        }
+      }
+      rinfo->inst_lens[it_block_idx] = it_block_len;
+
+      target_addr_offset += (2 + it.insts_len);
+      pc += (2 + it.insts_len);
+    }
+    // not IT block
+    else {
+      bool is_thumb32 = sh_util_is_thumb32(target_addr + target_addr_offset);
+      size_t inst_len = (is_thumb32 ? 4 : 2);
+      rewrite_len += inst_len;
+
+      if (is_thumb32) {
+        rinfo->inst_lens[idx++] =
+            sh_t32_get_rewrite_inst_len(*((uint16_t *)(target_addr + target_addr_offset)),
+                                        *((uint16_t *)(target_addr + target_addr_offset + 2)));
+        rinfo->inst_lens[idx++] = 0;
+      } else
+        rinfo->inst_lens[idx++] =
+            sh_t16_get_rewrite_inst_len(*((uint16_t *)(target_addr + target_addr_offset)));
+
+      target_addr_offset += inst_len;
+      pc += inst_len;
+    }
+  }
+
+  rinfo->start_addr = target_addr;
+  rinfo->end_addr = target_addr + rewrite_len;
+  rinfo->buf = (uint16_t *)0;
+  rinfo->buf_offset = 0;
+  rinfo->inst_lens_cnt = idx;
+}
+
+int sh_inst_hook_thumb_rewrite(uintptr_t from,  uintptr_t to, uint32_t sz,  size_t* rewrite_len ) {
+
+  // package the information passed to rewrite
+  sh_txx_rewrite_info_t rinfo;
+  sh_inst_get_thumb_rewrite_info(from, sz, &rinfo);
+
+  // backup and rewrite original instructions
+  uintptr_t target_addr_offset = 0;
+  uintptr_t pc = from + 4;
+  //uintptr_t pc = from ;
+  *rewrite_len = 0;
+  while (*rewrite_len < sz) {
+    // IT block
+    sh_t16_it_t it;
+    if (sh_t16_parse_it(&it, *((uint16_t *)(from + target_addr_offset)), pc)) 
+    {
+      *rewrite_len += (2 + it.insts_len);
+
+      // save space holder point of IT-else B instruction
+      uintptr_t enter_inst_else_p = to + rinfo.buf_offset;
+      rinfo.buf_offset += 2;  // B<c> <label>
+      rinfo.buf_offset += 2;  // NOP
+
+      // rewrite IT block
+      size_t enter_inst_else_len = 4;  // B<c> + NOP + B + NOP
+      size_t enter_inst_then_len = 0;  // B + NOP
+      uintptr_t enter_inst_then_p = 0;
+      for (size_t i = 0, j = 0; i < it.insts_cnt; i++) {
+        if (i == it.insts_else_cnt) {
+          // save space holder point of IT-then (for B instruction)
+          enter_inst_then_p = to + rinfo.buf_offset;
+          rinfo.buf_offset += 2;  // B <label>
+          rinfo.buf_offset += 2;  // NOP
+
+          // fill IT-else B instruction
+          sh_t16_rewrite_it_else((uint16_t *)enter_inst_else_p, (uint16_t)enter_inst_else_len, &it);
+        }
+
+        // rewrite instructions in IT block
+        bool is_thumb32 = sh_util_is_thumb32((uintptr_t)(&(it.insts[j])));
+        size_t len;
+        if (is_thumb32)
+          len = sh_t32_rewrite((uint16_t *)(to + rinfo.buf_offset), it.insts[j],
+                               it.insts[j + 1], it.pcs[i], &rinfo);
+        else
+          len = sh_t16_rewrite((uint16_t *)(to + rinfo.buf_offset), it.insts[j], it.pcs[i],
+                               &rinfo);
+        if (0 == len) return SHADOWHOOK_ERRNO_HOOK_REWRITE_FAILED;
+        rinfo.buf_offset += len;
+        j += (is_thumb32 ? 2 : 1);
+
+        // save the total offset for ELSE/THEN in enter
+        if (i < it.insts_else_cnt)
+          enter_inst_else_len += len;
+        else
+          enter_inst_then_len += len;
+
+        if (i == it.insts_cnt - 1) {
+          // fill IT-then B instruction
+          sh_t16_rewrite_it_then((uint16_t *)enter_inst_then_p, (uint16_t)enter_inst_then_len);
+        }
+      }
+
+      target_addr_offset += (2 + it.insts_len);
+      pc += (2 + it.insts_len);
+    }
+    // not IT block
+    else {
+      bool is_thumb32 = sh_util_is_thumb32(from + target_addr_offset);
+      size_t inst_len = (is_thumb32 ? 4 : 2);
+      *rewrite_len += inst_len;
+
+      // rewrite original instructions (fill in enter)
+      SH_LOG_INFO("thumb rewrite: offset %zu, pc %" PRIxPTR, rinfo.buf_offset, pc);
+      size_t len;
+      if (is_thumb32)
+        len = sh_t32_rewrite((uint16_t *)( to + rinfo.buf_offset),
+                             *((uint16_t *)(from + target_addr_offset)),
+                             *((uint16_t *)(from + target_addr_offset + 2)), pc, &rinfo);
+      else
+        len = sh_t16_rewrite((uint16_t *)(to  + rinfo.buf_offset),
+                             *((uint16_t *)(from + target_addr_offset)), pc, &rinfo);
+      if (0 == len) return SHADOWHOOK_ERRNO_HOOK_REWRITE_FAILED;
+      rinfo.buf_offset += len;
+
+      target_addr_offset += inst_len;
+      pc += inst_len;
+    }
+  }
+  SH_LOG_INFO("thumb rewrite: len %zu to %zu", *rewrite_len, rinfo.buf_offset);
+
+  return rinfo.buf_offset;
+}
+
+#endif

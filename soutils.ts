@@ -1,6 +1,6 @@
 'use strict';
 
-import {_frida_err, _frida_log, logWithFileNameAndLineNo} from './fridautils'
+import {_frida_err, _frida_log, readBinaryFromFileWithRange} from './fridautils'
 // store load buffer to global variable to void frida's GC to release loaded buffer
 //////////////////////////////////////////////////
 // type defines
@@ -35,35 +35,6 @@ export type LoadSoInfoType = {
 };
 
 type SymbolMap = {[key:string]:NativePointer};
-
-function readBinaryFromFileWithRange(fn:string, p:NativePointer, sz:number, offset:number){
-    let cm = new CModule(`
-        typedef unsigned int size_t;
-        extern void _frida_err(char * );
-        extern int fseek(void *stream, long offset, int whence);
-        extern size_t fread(void *ptr, size_t size, size_t nmemb, void *stream);
-        extern int fclose(void *stream);
-        extern void *fopen( char *pathname,  char *mode);
-        #define SEEK_SET 0
-        int fun(char* fn, void*p, unsigned int sz, unsigned int offset ){
-            void* fp = fopen(fn, "rb");
-            if(!fp) _frida_err("can not open file ");
-            fseek(fp, offset, SEEK_SET);
-            fread(p, 1, sz, fp);
-            fclose(fp);
-            return 0;
-        }
-    `,{
-        _frida_err : _frida_err,
-        fopen : Module.getExportByName(null,'fopen'),
-        fseek : Module.getExportByName(null,'fseek'),
-        fread : Module.getExportByName(null,'fread'),
-        fclose: Module.getExportByName(null,'fclose'),
-    })
-
-    let fun = new NativeFunction(cm.fun, 'int',['pointer', 'pointer', 'uint', 'uint']);
-    return fun(Memory.allocUtf8String(fn), p, sz, offset);
-}
 
 function resolveSymbol(sym_name:string, exportSyms?:SymbolMap, syms?:SymbolMap, libs?:string[]):null|NativePointer{
     if (exportSyms!=undefined && sym_name in exportSyms) return exportSyms[sym_name];
@@ -139,6 +110,7 @@ export function unloadAllSo(){
 }
 
 export function loadSo(info:SoInfoType, syms?:{[key:string]:NativePointer}, ignoreSymbols?:string[], libs?:string[], dir?:string):LoadSoInfoType {
+    console.log("loading so", info.name)
     if(info.name in loadedSoList) {
         console.log(`have load ${info.name} don't reload`); 
         let v = loadedSoList[info.name];

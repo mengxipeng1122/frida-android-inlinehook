@@ -154,6 +154,12 @@ static size_t sh_t32_rewrite_b(uint16_t *buf, uint16_t high_inst, uint16_t low_i
   addr = sh_txx_fix_addr(addr, rinfo);
 
   size_t idx = 0;
+  {
+      uint32_t pbuf= (uint32_t)(&buf[idx]);
+      if((pbuf & 3) !=0){
+          buf[idx++] = 0xBF00;                      // NOP
+      }
+  }
   if (type == B_T3) {
     uint32_t cond = SH_UTIL_GET_BITS_16(high_inst, 9, 6);
     buf[idx++] = 0xD000u | (uint16_t)(cond << 8u);  // B<c> #0
@@ -179,13 +185,23 @@ static size_t sh_t32_rewrite_adr(uint16_t *buf, uint16_t high_inst, uint16_t low
   uint32_t addr = (type == ADR_T2 ? (SH_UTIL_ALIGN_4(pc) - imm32) : (SH_UTIL_ALIGN_4(pc) + imm32));
   if (sh_txx_is_addr_need_fix(addr, rinfo)) return 0;  // rewrite failed
 
-  buf[0] = 0xF8DF;                      // LDR.W Rt, [PC, #4]
-  buf[1] = (uint16_t)(rt << 12u) + 4u;  // ...
-  buf[2] = 0xE002;                      // B #4
-  buf[3] = 0xBF00;                      // NOP
-  buf[4] = addr & 0xFFFFu;
-  buf[5] = addr >> 16u;
-  return 12;
+  size_t idx = 0;
+  {
+      uint32_t pbuf= (uint32_t)(&buf[idx]);
+      LOG_INFOS(" pbuf, %x", pbuf);
+      if((pbuf & 3) !=0){
+          SH_LOG_INFO(" add nop");
+          buf[idx++] = 0xBF00;                      // NOP
+      }
+  }
+
+  buf[idx++] = 0xF8DF;                      // LDR.W Rt, [PC, #4]
+  buf[idx++] = (uint16_t)(rt << 12u) + 4u;  // ...
+  buf[idx++] = 0xE002;                      // B #4
+  buf[idx++] = 0xBF00;                      // NOP
+  buf[idx++] = addr & 0xFFFFu;
+  buf[idx++] = addr >> 16u;
+  return idx*2
 }
 
 static size_t sh_t32_rewrite_ldr(uint16_t *buf, uint16_t high_inst, uint16_t low_inst, uintptr_t pc,

@@ -293,7 +293,7 @@ size_t sh_a64_relative_jump(uint32_t *buf, uintptr_t addr, uintptr_t pc) {
 }
 
 // add by mxp
-int sh_a64_inst_hook_rewrite(uintptr_t from,  uintptr_t to ,uint32_t len)
+int sh_inst_hook_a64_rewrite(uintptr_t from,  uintptr_t to ,uint32_t len)
 {
   // package the information passed to rewrite
   sh_a64_rewrite_info_t rinfo;

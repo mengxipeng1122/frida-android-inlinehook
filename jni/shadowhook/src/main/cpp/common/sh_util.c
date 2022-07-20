@@ -65,6 +65,7 @@ uint32_t sh_util_arm_expand_imm(uint32_t opcode) {
   return amt == 0 ? imm : sh_util_ror(imm, 32, amt);
 }
 
+#if 0
 int sh_util_write_inst(uintptr_t target_addr, void *inst, size_t inst_len) {
   if (0 != sh_util_mprotect(target_addr, inst_len, PROT_READ | PROT_WRITE | PROT_EXEC))
     return SHADOWHOOK_ERRNO_MPROT;
@@ -90,6 +91,7 @@ int sh_util_write_inst(uintptr_t target_addr, void *inst, size_t inst_len) {
 
   return 0;  // OK
 }
+#endif
 
 static bool sh_util_starts_with(const char *str, const char *start) {
   while (*str && *str == *start) {
@@ -119,6 +121,7 @@ end:
   return (api_level > 0) ? api_level : -1;
 }
 
+#if 0
 int sh_util_get_api_level(void) {
   static int xdl_util_api_level = -1;
 
@@ -132,6 +135,7 @@ int sh_util_get_api_level(void) {
 
   return xdl_util_api_level;
 }
+#endif
 
 int sh_util_write(int fd, const char *buf, size_t buf_len) {
   if (fd < 0) return -1;

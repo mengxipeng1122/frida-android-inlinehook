@@ -46,7 +46,17 @@ include $(CLEAR_VARS)
 LOCAL_MODULE:= shadowhook
 ifeq ("${TARGET_ARCH_ABI_MACRO}","ARM64_V8A")
     LOCAL_SRC_FILES := shadowhook/src/main/cpp/arch/arm64/sh_a64.c 
+else ifeq ("${TARGET_ARCH_ABI_MACRO}","ARMEABI_V7A")
+    LOCAL_SRC_FILES := shadowhook/src/main/cpp/arch/arm/sh_t32.c \
+                       shadowhook/src/main/cpp/common/sh_util.c  \
+                       shadowhook/src/main/cpp/arch/arm/sh_t16.c \
+                       shadowhook/src/main/cpp/arch/arm/sh_txx.c \
+                       shadowhook/src/main/cpp/arch/arm/sh_inst.c \
+                       shadowhook/src/main/cpp/arch/arm/sh_a32.c
+else
+    $(error please chck architecture ${TARGET_ARCH_ABI_MACRO})
 endif
+
 
 
 
@@ -56,9 +66,14 @@ LOCAL_C_INCLUDES :=     shadowhook/src/main/cpp/common              \
                         shadowhook/src/main/cpp/                    \
                         shadowhook/src/main/cpp/include  
 
-LOCAL_LDLIBS :=  
-LOCAL_CXXFLAGS= 
-LOCAL_CFLAGS= -std=c11
+LOCAL_LDLIBS    :=  
+LOCAL_CXXFLAGS  :=
+LOCAL_CFLAGS    :=   -std=c11                                       \
+                     -fno-rtti                                      \
+                     -fno-exceptions                                \
+                     -DLOG_OUTPUT=2                                 \
+                     -fno-stack-protector                           
+
 LOCAL_SHARED_LIBRARIES =  fridafuns
 include $(BUILD_SHARED_LIBRARY)
 

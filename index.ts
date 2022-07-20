@@ -24,7 +24,8 @@ let loadPatchSo = ()=>{
         ],
         [
             soname
-        ],)
+        ],
+    )
     // console.log(JSON.stringify(loadm))
     return loadm;
 }
@@ -38,7 +39,7 @@ let test = function()
     let trampoline_ptr = m.base.add(soinfo.loads[0].virtual_size);
     let trampoline_ptr_end = m.base.add(soinfo.loads[1].virtual_address);
 
-    InlineHooker.init();
+    InlineHooker.init([soname]);
 
     let infos:{hook_offset:number,hook_fun_ptr:NativePointer}[];
     let frida_fun = new NativeCallback(function(sp:NativePointer){
@@ -46,34 +47,32 @@ let test = function()
     },'void',['pointer'])
 
     const cm = new CModule(`
-//#include <stdio.h>
 void _frida_fun(const char* s);
 void fun(void) {
-  //printf("Hello World from CModule\\n");
-  _frida_fun("Hello World from CModule\\n");
+    _frida_fun("Hello World from CModule\\n");
 }
-`,{
-    _frida_fun: frida_fun,
-});
+    `,{
+        _frida_fun: frida_fun,
+    });
 
-console.log(JSON.stringify(cm));
-
-const fun = new NativeFunction(cm.fun, 'void', []);
+    const fun = new NativeFunction(cm.fun, 'void', []);
+    //fun();
 
     let arch = Process.arch;
     if(arch == 'arm64'){
         infos = [
-            //{hook_ptr :m.base.add(0x2f371c), hook_fun_ptr:loadm?.syms.hook_test1 },
-            //{hook_ptr :m.base.add(0x2f372c), hook_fun_ptr:loadm?.syms.hook_test1 },
-            {hook_offset:0x2dc868, hook_fun_ptr:loadm?.syms.hook_test1  },
-            {hook_offset:0x2dc880, hook_fun_ptr:loadm?.syms.hook_test1  },
-            {hook_offset:0x2dc838, hook_fun_ptr:loadm?.syms.hook_test1  },
-            {hook_offset:0x2dc88c, hook_fun_ptr:loadm?.syms.hook_test1  },
+            {hook_offset:0x2dc854, hook_fun_ptr:loadm?.syms.hook_test1  },
+            // {hook_offset:0x2dc868, hook_fun_ptr:loadm?.syms.hook_test1  },
+            // {hook_offset:0x2dc880, hook_fun_ptr:loadm?.syms.hook_test1  },
+            // {hook_offset:0x2dc838, hook_fun_ptr:loadm?.syms.hook_test1  },
+            // {hook_offset:0x2dc88c, hook_fun_ptr:loadm?.syms.hook_test1  },
         ]
     }
     else if(arch=='arm'){
         infos = [
-            //{hook_ptr :m.base.add(0x1f3701), hook_fun_ptr:loadm?.syms.hook_test1  },
+            //{hook_offset :0x1f36f9, hook_fun_ptr:loadm?.syms.hook_test1  },
+            //{hook_offset :0x1f3707, hook_fun_ptr:loadm?.syms.hook_test1  },
+            {hook_offset :0x1f372f, hook_fun_ptr:loadm?.syms.hook_test1  },
         ]
     }
     else{
@@ -102,7 +101,6 @@ let main = ()=>{
     let funs = ['dlopen', 'android_dlopen_ext']
     funs.forEach(f=>{
         let funp = Module.getExportByName(null,f);
-        console.log('before attach', funp); dumpMemory(funp)
         Interceptor.attach(funp,{
             onEnter:function(args){
                 let loadpath = args[0].readUtf8String();
@@ -120,7 +118,6 @@ let main = ()=>{
                 }
             },
         });
-        console.log('after attach', funp); dumpMemory(funp)
     })
     // inject when then game has been started
     fun();

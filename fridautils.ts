@@ -36,17 +36,25 @@ export let logWithFileNameAndLineNo = (msg:string)=>{
     console.log(final_caller_line, ":", msg)
 }
 
-export let showAsmCode = (p:NativePointer, sz?: number| undefined, parser?:Function)=>{
-    if(parser==undefined) parser=Instruction.parse;
-    if (sz == undefined) sz = 5;
+export let showAsmCode = (p:NativePointer, sz?: number| undefined)=>{
+    if (sz == undefined) sz = 5*Process.pointerSize;
     for(let offset = 0; offset<sz; ){
+        let addr = p.add(offset);
         try{
-            const inst = parser(p.add(offset))
-            console.log(p.add(offset), ptr(offset), inst.toString())
+            let inst;
+            switch(Process.arch){
+                case "arm":     inst = Instruction.parse(addr) as ArmInstruction;   break;
+                case "arm64":   inst = Instruction.parse(addr) as Arm64Instruction; break;
+                case "mips":    inst = Instruction.parse(addr) as MipsInstruction;  break;
+                case "ia32":    inst = Instruction.parse(addr) as X86Instruction;   break;
+                case "x64":     inst = Instruction.parse(addr) as X86Instruction;   break;
+            }
+            console.log(addr.and(~1), ptr(offset), inst.toString())
             offset+= inst.size;
         }
         catch(e){
-            console.log(`can not parse instruction at ${p.add(offset)} ${p.add(offset).readByteArray(Process.pointerSize)}`)
+            console.log(`can not parse instruction at ${addr}`)
+            dumpMemory(addr.and(~1),Process.pointerSize)
             offset += Process.pointerSize;
         }
     }
@@ -84,5 +92,34 @@ export let readMemoryArrayBuffer=(p:NativePointer, sz?:number):ArrayBuffer=>{
     let ab = p.readByteArray(sz);
     if(ab==null) throw(`read ${sz} bytes from ${p} failed`)
     return ab;
+}
+
+export let readBinaryFromFileWithRange=(fn:string, p:NativePointer, sz:number, offset:number)=>{
+    let cm = new CModule(`
+        typedef unsigned int size_t;
+        extern void _frida_err(char * );
+        extern int fseek(void *stream, long offset, int whence);
+        extern size_t fread(void *ptr, size_t size, size_t nmemb, void *stream);
+        extern int fclose(void *stream);
+        extern void *fopen( char *pathname,  char *mode);
+        #define SEEK_SET 0
+        int fun(char* fn, void*p, unsigned int sz, unsigned int offset ){
+            void* fp = fopen(fn, "rb");
+            if(!fp) _frida_err("can not open file ");
+            fseek(fp, offset, SEEK_SET);
+            fread(p, 1, sz, fp);
+            fclose(fp);
+            return 0;
+        }
+    `,{
+        _frida_err : _frida_err,
+        fopen : Module.getExportByName(null,'fopen'),
+        fseek : Module.getExportByName(null,'fseek'),
+        fread : Module.getExportByName(null,'fread'),
+        fclose: Module.getExportByName(null,'fclose'),
+    })
+
+    let fun = new NativeFunction(cm.fun, 'int',['pointer', 'pointer', 'uint', 'uint']);
+    return fun(Memory.allocUtf8String(fn), p, sz, offset);
 }
 
