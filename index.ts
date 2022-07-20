@@ -1,6 +1,6 @@
 'use strict';
 
-import {loadSo} from './soutils'
+import {loadSo, unloadAllSo} from './soutils'
 import {basename} from 'path'
 import {InlineHooker} from './InlineHooker'
 import {dumpMemory, _frida_err, _frida_hexdump, _frida_log} from './fridautils'
@@ -129,6 +129,7 @@ let main = ()=>{
 let cleanup = ()=>{
     console.log('cleanup for Typescript')
     InlineHooker.restoreAllInlineHooks()
+    unloadAllSo();
 }
 
 rpc.exports.dispose = function(){

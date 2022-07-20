@@ -30,7 +30,8 @@ type SoInfoType = {
 
 export type LoadSoInfoType = {
     buff: NativePointer,
-    syms: {[key:string]:NativePointer} ,
+    syms: {[key:string]:NativePointer},
+    
 };
 
 type SymbolMap = {[key:string]:NativePointer};
@@ -98,11 +99,42 @@ function resolveSymbol(sym_name:string, exportSyms?:SymbolMap, syms?:SymbolMap, 
 }
 
 let loadedSoList : {[key:string]:{
-        buff :NativePointer,
-        syms : SymbolMap,
+        buff                : NativePointer,
+        syms                : SymbolMap,
+        dtors_offset        : number,
+        dtor_functions      : number[],
     }} = {};
 
-export function unloadSo(){
+export function unloadSo( name:string){
+    if(Object.keys(loadedSoList).indexOf(name)<0) return;
+
+    let info = loadedSoList[name];
+    let buff = info.buff;
+    if(info.dtor_functions!=undefined)
+    {
+        let funs = info.dtor_functions;
+        let funs_offset = info.dtors_offset;
+        console.log('call dtors', info.dtor_functions.length)
+        let cnt =funs.length;
+        for(let t=cnt-1; t>=0;t--){
+            let a = funs[t]
+            if(a==0) {
+                let p = buff.add(funs_offset+t*Process.pointerSize).readPointer()
+                if(!p.isNull()) new NativeFunction(p, 'void', [])();
+            }
+            else{
+                let p = buff.add(a)
+                new NativeFunction(p, 'void', [])();
+            }
+        }
+    }
+
+}
+export function unloadAllSo(){
+    Object.keys(loadedSoList)
+        .forEach(k=>{
+            unloadSo(k)
+        })
     loadedSoList = {}
 }
 
@@ -256,7 +288,7 @@ export function loadSo(info:SoInfoType, syms?:{[key:string]:NativePointer}, igno
         }
     }
 
-    let loadm = {buff:buff, syms:exportSyms};
+    let loadm = {buff:buff, syms:exportSyms, dtors_offset:info.dtors_offset, dtor_functions:info.dtor_functions };
     loadedSoList[info.name] = loadm;
 
     return loadm;

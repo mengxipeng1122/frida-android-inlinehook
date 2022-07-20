@@ -21,3 +21,12 @@ extern "C" void hook_test1(unsigned char* baseaddress, unsigned char* sp)
 #error "please implements other atchitecture"
 #endif
 }
+
+
+//////////////////////////////////////////////////
+// test dtors and ctors
+//__attribute__((constructor)) void test1(){
+//}
+//__attribute__((destructor)) void test2(){
+//}
+//////////////////////////////////////////////////

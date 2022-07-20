@@ -51,8 +51,8 @@ def main():
             sz = getAlignNum(virtual_address+virtual_size, alignment)
             load_size = max(sz, load_size)
     # exported_symbols
-    exported_symbols = []
     if not args.no_exports:
+        exported_symbols = []
         for k, func in enumerate(binary.exported_functions):
             exported_symbols.append({
                 'name'      : func.name,
@@ -67,8 +67,8 @@ def main():
                 'address'   : sym.value,
                 });
     # relocations
-    relocations=[];
     if not args.no_relocations:
+        relocations=[];
         for k, rel in enumerate(binary.relocations):
             relocations.append({
                 'address'   : rel.address,
@@ -97,19 +97,21 @@ def main():
 
     # write output file
     t = Template(open(templateFn).read())
+    info = {
+    'machine_type'      : machine_type      ,
+    'name'              : name              ,
+    'loads'             : loads             ,
+    'load_size'         : load_size         ,
+    'ctors_offset'      : ctors_offset      ,
+    'ctors'             : ctors             ,
+    'dtors_offset'      : dtors_offset      ,
+    'dtors'             : dtors             ,
+    };
+    if not args.no_exports:     info['exported_symbols'] = exported_symbols 
+    if not args.no_relocations: info['relocations'     ] = relocations
     s = t.render(
-        info = {
-        'machine_type'      : machine_type      ,
-        'name'              : name              ,
-        'loads'             : loads             ,
-        'load_size'         : load_size         ,
-        'exported_symbols'  : exported_symbols  ,
-        'relocations'       : relocations       ,
-        'ctors_offset'      : ctors_offset      ,
-        'ctors'             : ctors             ,
-        'dtors_offset'      : dtors_offset      ,
-        'dtors'             : dtors             ,
-    });
+        info = info
+    );
     open(args.output,'w').write(s)
     #assert False, 'exit'
 

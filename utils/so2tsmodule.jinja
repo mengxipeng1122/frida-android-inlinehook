@@ -13,17 +13,21 @@ export var info =
         {% endfor %}
     ], 
 
-    exported_symbols    : [
-        {% for e in info['exported_symbols'] %}
-            {{ e   }} , 
-        {% endfor %}
-    ],
+    {% if 'exported_symbols' in info %}
+        exported_symbols    : [
+            {% for e in info['exported_symbols'] %}
+                {{ e   }} , 
+            {% endfor %}
+        ],
+    {% endif %}
 
-    relocations         : [
-        {% for r in info['relocations'] %}
-            {{ r   }} , 
-        {% endfor %}
-    ],
+    {% if 'relocations' in info %}
+        relocations         : [
+            {% for r in info['relocations'] %}
+                {{ r   }} , 
+            {% endfor %}
+        ],
+    {% endif %}
 
     ctors_offset        : {{ info['ctors_offset'] }}, 
 
