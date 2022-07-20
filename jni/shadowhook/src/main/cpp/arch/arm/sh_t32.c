@@ -201,7 +201,7 @@ static size_t sh_t32_rewrite_adr(uint16_t *buf, uint16_t high_inst, uint16_t low
   buf[idx++] = 0xBF00;                      // NOP
   buf[idx++] = addr & 0xFFFFu;
   buf[idx++] = addr >> 16u;
-  return idx*2
+  return idx*2;
 }
 
 static size_t sh_t32_rewrite_ldr(uint16_t *buf, uint16_t high_inst, uint16_t low_inst, uintptr_t pc,

@@ -3,7 +3,7 @@
 import {loadSo, unloadAllSo} from './soutils'
 import {basename} from 'path'
 import {InlineHooker} from './InlineHooker'
-import {dumpMemory, _frida_err, _frida_hexdump, _frida_log} from './fridautils'
+import {dumpMemory, showAsmCode, _frida_err, _frida_hexdump, _frida_log} from './fridautils'
 import {info as patchsoinfo} from './patchso'
 import {info as soinfo} from './so'
 
@@ -30,6 +30,22 @@ let loadPatchSo = ()=>{
     return loadm;
 }
 
+// never define callee function as a local variable, or it will be free by GC system 
+export     let infos:{hook_offset:number,hook_fun_ptr:NativePointer}[];
+export    let frida_fun = new NativeCallback(function(sp:NativePointer){
+        //console.log(sp.readUtf8String(),'from frida_fun')
+        dumpMemory(sp)
+    },'void',['pointer'])
+
+export    const cm = new CModule(`
+void _frida_fun(const char* s);
+void fun(void) {
+    _frida_fun("Hello World from CModule\\n");
+}
+    `,{
+        _frida_fun: frida_fun,
+    });
+
 let test = function()
 {
     let m = Process.findModuleByName(soname);
@@ -41,27 +57,23 @@ let test = function()
 
     InlineHooker.init([soname]);
 
-    let infos:{hook_offset:number,hook_fun_ptr:NativePointer}[];
-    let frida_fun = new NativeCallback(function(sp:NativePointer){
-        console.log(sp.readUtf8String(),'from frida_fun')
-    },'void',['pointer'])
-
-    const cm = new CModule(`
-void _frida_fun(const char* s);
-void fun(void) {
-    _frida_fun("Hello World from CModule\\n");
-}
-    `,{
-        _frida_fun: frida_fun,
-    });
-
     const fun = new NativeFunction(cm.fun, 'void', []);
-    //fun();
+    console.log('fun', fun);
+    console.log('frida_fun', frida_fun);
+    fun();
+    Memory.protect(fun,Process.pageSize,'rwx')
+    {
+        let p = fun;;
+        console.log('cm', JSON.stringify(cm))
+        showAsmCode(p)
+        dumpMemory(p, 0x20)
+    }
 
     let arch = Process.arch;
     if(arch == 'arm64'){
         infos = [
-            {hook_offset:0x2dc854, hook_fun_ptr:loadm?.syms.hook_test1  },
+            //{hook_offset:0x2dc854, hook_fun_ptr:loadm?.syms.hook_test1  },
+            {hook_offset:0x2dc854, hook_fun_ptr:fun  },
             // {hook_offset:0x2dc868, hook_fun_ptr:loadm?.syms.hook_test1  },
             // {hook_offset:0x2dc880, hook_fun_ptr:loadm?.syms.hook_test1  },
             // {hook_offset:0x2dc838, hook_fun_ptr:loadm?.syms.hook_test1  },
@@ -72,7 +84,8 @@ void fun(void) {
         infos = [
             //{hook_offset :0x1f36f9, hook_fun_ptr:loadm?.syms.hook_test1  },
             //{hook_offset :0x1f3707, hook_fun_ptr:loadm?.syms.hook_test1  },
-            {hook_offset :0x1f372f, hook_fun_ptr:loadm?.syms.hook_test1  },
+            //{hook_offset :0x1f372f, hook_fun_ptr:loadm?.syms.hook_test1  },
+            {hook_offset :0x1f36ed, hook_fun_ptr:frida_fun  },
         ]
     }
     else{

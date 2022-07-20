@@ -1,8 +1,6 @@
 
 'use strict';
 
-import { off } from "process";
-
 export let _frida_log = new NativeCallback(function(sp:NativePointer){
         let s = sp.readUtf8String();
         console.log(s)
