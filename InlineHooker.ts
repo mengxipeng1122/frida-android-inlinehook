@@ -315,7 +315,7 @@ class Arm64InlineHooker extends InlineHooker{
             if(ioff>=sz) break;
             let iaddr = from.add(ioff)
             let oaddr = to.add(offset);
-            const inst = iaddr.readU32();
+            let inst = iaddr.readU32();
             offset+= sh_a64_rewrite(oaddr,inst,iaddr);
             ioff+=4;
         }
