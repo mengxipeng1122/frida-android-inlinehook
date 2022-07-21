@@ -114,6 +114,7 @@ export abstract class InlineHooker
     static all_inline_hooks:{[key:string]:{
             origin_bytes:ArrayBuffer| null,
             hook_ptr:NativePointer,
+            hook_fun_ptr : NativePointer,
     }}= { };
 
     static hasHooked = (hook_ptr:NativePointer):boolean=>{
@@ -167,8 +168,9 @@ export abstract class InlineHooker
         let [trampoline_len, origin_bytes] = inlineHooker.run();
         let k = hook_ptr.toString();
         InlineHooker.all_inline_hooks[k]= {
-            hook_ptr: hook_ptr,
-            origin_bytes : origin_bytes,
+            hook_ptr        : hook_ptr,
+            hook_fun_ptr    : hook_fun_ptr,
+            origin_bytes    : origin_bytes,
         }
         return trampoline_len;
     }

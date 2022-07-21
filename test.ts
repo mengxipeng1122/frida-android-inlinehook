@@ -65,6 +65,10 @@ let test = function()
     let infos:{hook_offset:number,hook_fun_ptr:NativePointer}[];
 
     //InlineHooker.init([soname]);
+    const frida_fun = new NativeCallback(function(para1:NativePointer, sp:NativePointer){
+        console.log('para1', para1, 'sp', sp);
+        showARM64Regs(sp);
+    },'void',['pointer','pointer'])
 
     let arch = Process.arch;
     if(arch == 'arm64'){
@@ -123,12 +127,18 @@ let cleanup = ()=>{
     InlineHooker.restoreAllInlineHooks()
 }
 
-rpc.exports.dispose = function(){
-    cleanup();
+rpc.exports = {
+    init : function (){
+        console.log('########################################');
+        main();
+    },
+
+    dispose : function(){
+        cleanup();
+    },
 }
 
-console.log('########################################');
-main();
+
 
 
 
