@@ -3,7 +3,7 @@
 
 import {loadSo, LoadSoInfoType } from './soutils'
 import { showAsmCode, dumpMemory, getPyCodeFromMemory,_frida_err, _frida_hexdump, _frida_log, readMemoryArrayBuffer } from "./fridautils";
-import {info as shadowhooksoinfo} from './shadowhookso'
+//import {info as shadowhooksoinfo} from './shadowhookso'
 import {sh_a64_rewrite} from './sh_a64'
 
 const using_frida_for_reloc_code:boolean = true;
@@ -84,32 +84,31 @@ export abstract class InlineHooker
     }
 
     static loadm : LoadSoInfoType;  
-    static loadShaderHookSo = (loadedlibs?:string[])=>{
-        let libs:string[] = [];
-        if (loadedlibs!=undefined){
-            loadedlibs.forEach(lib=>{
-                libs.push(lib)
-            })
-        }
+    //static loadShaderHookSo = (loadedlibs?:string[])=>{
+    //    let libs:string[] = [];
+    //    if (loadedlibs!=undefined){
+    //        loadedlibs.forEach(lib=>{
+    //            libs.push(lib)
+    //        })
+    //    }
+    //    let loadm = loadSo(shadowhooksoinfo,
+    //        {
+    //            _frida_log:     _frida_log,
+    //            _frida_err:     _frida_err,
+    //            _frida_hexdump: _frida_hexdump,
+    //        },
+    //        [
+    //            '__google_potentially_blocking_region_begin',
+    //            '__google_potentially_blocking_region_end',
+    //        ],
+    //        libs,
+    //        )
+    //    InlineHooker.loadm = loadm;
+    //}
 
-        let loadm = loadSo(shadowhooksoinfo,
-            {
-                _frida_log:     _frida_log,
-                _frida_err:     _frida_err,
-                _frida_hexdump: _frida_hexdump,
-            },
-            [
-                '__google_potentially_blocking_region_begin',
-                '__google_potentially_blocking_region_end',
-            ],
-            libs,
-            )
-        InlineHooker.loadm = loadm;
-    }
-
-    static init = (loadedlibs?:string[])=>{
-        InlineHooker.loadShaderHookSo(loadedlibs);
-    }
+    //static init = (loadedlibs?:string[])=>{
+    //    InlineHooker.loadShaderHookSo(loadedlibs);
+    //}
 
 
     static all_inline_hooks:{[key:string]:{

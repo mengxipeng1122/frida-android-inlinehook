@@ -1,9 +1,8 @@
 'use strict';
 
-import {loadSo, unloadAllSo} from './soutils'
 import {basename} from 'path'
-import {InlineHooker} from './InlineHooker'
-import {dumpMemory, showAsmCode, _frida_err, _frida_hexdump, _frida_log} from './fridautils'
+import {InlineHooker} from './src/InlineHooker'
+import {dumpMemory, showAsmCode, _frida_err, _frida_hexdump, _frida_log} from './src/fridautils'
 
 //////////////////////////////////////////////////
 // global variables 
@@ -110,12 +109,7 @@ let main = ()=>{
             onLeave:function(retval){
                 // soname have loaded at this moment 
                 if(this.name == soname){
-                    let funname = '_ZN9GameScene4initEv'; //GameScene::init(void)
-                    Interceptor.attach(Module.getExportByName(soname, funname),{
-                        onLeave:function(retval){
-                            fun(); // inject our code after invoked GameScene::init 
-                        },
-                    })
+                    fun();
                 }
             },
         });
@@ -127,7 +121,6 @@ let main = ()=>{
 let cleanup = ()=>{
     console.log('cleanup for Typescript')
     InlineHooker.restoreAllInlineHooks()
-    unloadAllSo();
 }
 
 rpc.exports.dispose = function(){

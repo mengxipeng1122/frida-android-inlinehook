@@ -2,9 +2,6 @@
 // https://developer.arm.com/documentation/ddi0487/latest
 // https://developer.arm.com/documentation/ddi0602/latest
 
-import { write } from "fs";
-import { off } from "process";
-import { writer } from "repl";
 
 //52 #define SH_UTIL_GET_BITS_32(n, high, low) ((uint32_t)((n) << (31u - (high))) >> (31u - (high) + (low)))
 let SH_UTIL_GET_BITS_32=(n:number, high:number, low:number):number=>{
@@ -235,13 +232,13 @@ export let  sh_a64_rewrite=(buf:NativePointer, inst:number, pc:NativePointer ):n
   //console.log(`a64 rewrite: typ ${typ}, inst ${ptr(inst)} `);
 
   switch(typ) {
-    case sh_a64_type_t.B :
-    case sh_a64_type_t.B_COND:
-    case sh_a64_type_t.BL:
+    case sh_a64_type_t.B      :
+    case sh_a64_type_t.B_COND :
+    case sh_a64_type_t.BL     :
       return sh_a64_rewrite_b(buf, inst, pc, typ);
 
-    case sh_a64_type_t. ADR:
-    case sh_a64_type_t. ADRP:
+    case sh_a64_type_t. ADR   :
+    case sh_a64_type_t. ADRP  :
       return sh_a64_rewrite_adr(buf, inst, pc, typ);
 
     case sh_a64_type_t.LDR_LIT_32         :
@@ -253,11 +250,11 @@ export let  sh_a64_rewrite=(buf:NativePointer, inst:number, pc:NativePointer ):n
     case sh_a64_type_t.LDR_SIMD_LIT_128   :
       return sh_a64_rewrite_ldr(buf, inst, pc, typ);
 
-    case sh_a64_type_t. CBZ:
+    case sh_a64_type_t. CBZ :
     case sh_a64_type_t. CBNZ:
       return sh_a64_rewrite_cb(buf, inst, pc);
 
-    case sh_a64_type_t. TBZ:
+    case sh_a64_type_t. TBZ :
     case sh_a64_type_t. TBNZ:
       return sh_a64_rewrite_tb(buf, inst, pc);
 

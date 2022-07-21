@@ -1,13 +1,13 @@
 {
-  "name": "frida-agent-example",
-  "version": "1.0.0",
-  "description": "Example Frida agent written in TypeScript",
+  "name": "frida-inlinehook",
+  "version": "0.0.1",
+  "description": "A Frida inline hook library  written in TypeScript",
   "private": true,
-  "main": "index.ts",
+  "main": "src/index.ts",
+  "types": "dist/index.d.ts",
   "scripts": {
     "prepare": "npm run build",
-    "build": " frida-compile index.ts -o _agent.js -c",
-    "watch": "frida-compile agent/index.ts -o _agent.js -w"
+    "build": " frida-compile test.ts -o _agent.js -c"
   },
   "devDependencies": {
     "@types/frida-gum": "^17.3.1",
